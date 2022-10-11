@@ -28,12 +28,12 @@ architecture behavior of memory is
 begin    
 
         memor(to_integer(unsigned(data_addr))) <= data_in 
-        when (falling_edge(clock) and data_read = '1' and data_write='0');
+        when (falling_edge(clock) and data_read = '0' and data_write='1');
 
         data_out <= (memor(to_integer(unsigned(data_addr)))
         & memor(to_integer(unsigned(data_addr)) + 1)
         & memor(to_integer(unsigned(data_addr)) + 2) 
         & memor(to_integer(unsigned(data_addr)) + 3)) 
-        when (falling_edge(clock) and data_read = '0' and data_write = '1');
+        when (falling_edge(clock) and data_read = '1' and data_write = '0');
 
 end architecture behavior;
