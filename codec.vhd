@@ -1,6 +1,7 @@
 library ieee, std;
 use ieee.std_logic_1164.all;
 use std.textio.all;
+use ieee.numeric_std.all;
 
 entity codec is
 port (
@@ -14,3 +15,39 @@ port (
     codec_data_out : out std_logic_vector(7 downto 0)
 );
 end entity;
+
+architecture behavior of codec is
+    constant file_write :string  := "dados_write.dat";
+    constant file_read :string  := "dados_read.dat";
+    file fptr: text;
+begin
+    process (interrupt) is
+        variable fstatus       :file_open_status;
+        variable file_line     :line;
+        variable aux_out : integer;
+        variable aux_valid: std_logic := '0';
+    begin
+        
+        if(read_signal = '1' and write_signal = '0') then
+            file_open(fstatus, fptr, file_read, read_mode);
+            if(fstatus = open_ok) then
+                while not endfile(fptr) loop
+                    readline(fptr, file_line);
+                    read(file_line, aux_out);
+                end loop;
+                codec_data_out <= std_logic_vector(to_unsigned(aux_out, 8));
+                file_close(fptr);
+                valid <= not aux_valid;
+            end if;
+        elsif (read_signal = '0' and write_signal = '1') then
+            file_open(fstatus, fptr, file_write, append_mode);
+            if(fstatus = open_ok) then
+                write(file_line, to_integer(unsigned(codec_data_in)));
+                writeline(fptr, file_line);
+                file_close(fptr);
+                valid <= not aux_valid;
+            end if;
+        end if;
+    end process;
+    
+end architecture;
