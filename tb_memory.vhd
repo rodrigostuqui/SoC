@@ -15,18 +15,19 @@ architecture mixed of tb_memory is
     signal data_read: std_logic := '0';
     signal data_write: std_logic := '1';
     signal clk: std_logic := '0';
+    subtype data_length is std_logic_vector(data_width-1 downto 0) ;
+    type mem is array (0 to (2**addr_width + 2)) of data_length ;
 begin
    
-    mem: entity work.memory(behavior)
+    memory1: entity work.memory(behavior)
         generic map(addr_width, data_width)
         port map(data_in => data_in, data_addr => data_addr, data_read => data_read, 
         data_write => data_write, data_out => data_out, clock => clk);
-        
 
-        
 
     estimulo: process is
-        variable resultado : std_logic_vector((data_width*4)-1 downto 0) := (others => '1');
+        variable resultado : mem;
+        variable aux_resultado : std_logic_vector((data_width*4)-1 downto 0);
     begin
         
         --Escrita
@@ -39,20 +40,18 @@ begin
             clk <= '0';
             wait until falling_edge(clk);
             wait for 1 ns;
+            resultado(to_integer(unsigned(data_addr))) := data_in ;
         end loop;
 
         --Leitura
         data_write <= '0';
         data_read <= '1';
-        for i in 0 to (2**addr_width - 4) loop
+        for i in 0 to (2**addr_width - 1) loop
             data_addr <= std_logic_vector(to_unsigned(i, addr_width));
-            clk <= '1';
             wait for 1 ns;
-            clk <= '0';
-            wait until falling_edge(clk);
-            wait for 1 ns;
-            assert data_out = resultado
-            report "Erro!"
+            aux_resultado := resultado(i) & resultado(i + 1) & resultado(i + 2) & resultado(i + 3);
+            assert data_out = aux_resultado
+            report "Erro! " & integer'image(to_integer(unsigned(data_addr)))
             severity failure;
         end loop;
     wait;

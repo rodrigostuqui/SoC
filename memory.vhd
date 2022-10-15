@@ -21,19 +21,19 @@ port (
 end entity;
 
 architecture behavior of memory is
-    subtype data_length is std_logic_vector(data_width-1 downto 0);
-    type mem is array (0 to 2**addr_width) of data_length;
+    subtype data_length is std_logic_vector(data_width-1 downto 0) ;
+    type mem is array (0 to (2**addr_width + 2)) of data_length ;
 
     signal memor : mem;
 begin    
 
         memor(to_integer(unsigned(data_addr))) <= data_in 
-        when (falling_edge(clock) and data_read = '0' and data_write='1');
+        when (falling_edge(clock) and data_write='1');
 
         data_out <= (memor(to_integer(unsigned(data_addr)))
         & memor(to_integer(unsigned(data_addr)) + 1)
         & memor(to_integer(unsigned(data_addr)) + 2) 
         & memor(to_integer(unsigned(data_addr)) + 3)) 
-        when (falling_edge(clock) and data_read = '1' and data_write = '0');
+        when (data_read = '1');
 
 end architecture behavior;
