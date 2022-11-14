@@ -20,12 +20,12 @@ architecture behavior of codec is
     constant file_write :string  := "dados_write.dat";
     constant file_read :string  := "dados_read.dat";
     file fptr: text;
+    signal aux_valid: std_logic := '0';
 begin
     process (interrupt) is
         variable fstatus       :file_open_status;
         variable file_line     :line;
         variable aux_out : integer;
-        variable aux_valid: std_logic := '0';
     begin
         
         if(read_signal = '1' and write_signal = '0') then
@@ -36,18 +36,19 @@ begin
                     read(file_line, aux_out);
                 end loop;
                 codec_data_out <= std_logic_vector(to_unsigned(aux_out, 8));
+                aux_valid <= not aux_valid;
                 file_close(fptr);
-                valid <= not aux_valid;
             end if;
         elsif (read_signal = '0' and write_signal = '1') then
             file_open(fstatus, fptr, file_write, append_mode);
             if(fstatus = open_ok) then
                 write(file_line, to_integer(unsigned(codec_data_in)));
                 writeline(fptr, file_line);
+                aux_valid <= not aux_valid;
+
                 file_close(fptr);
-                valid <= not aux_valid;
             end if;
         end if;
     end process;
-    
+    valid <= not aux_valid;
 end architecture;
