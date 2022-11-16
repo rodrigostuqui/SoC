@@ -55,18 +55,20 @@ architecture behavior of cpu is
     constant JEQ: std_logic_vector(3 downto 0):= "1110";
     constant JMP: std_logic_vector(3 downto 0):= "1111";
 
-    signal op : std_logic_vector(3 downto 0);
+    signal op : std_logic_vector(3 downto 0) := "0000";
     signal IP :std_logic_vector(addr_width-1 downto 0) := (others => '0');
     signal SP :std_logic_vector(addr_width-1 downto 0) := (others => '0');
     begin
-
+    
     furia: process
-        variable data_operator : std_logic_vector(data_width-1 downto 0);
+        variable data_operator : std_logic_vector((data_width*2)-1 downto 0);
 
         begin
-        if rising_edge(clock) then
-            instruction_addr <= IP;
-            op <= instruction_in(data_width-1 downto data_width/2);
+        IP <= std_logic_vector(unsigned(IP) + 1);
+        wait for 5 ns;
+        if falling_edge(clock) and halt = '0' then
+            op <= instruction_in(7 downto 4);
+            report integer'image(to_integer(unsigned(op)));
             wait for 1 ns;
             case op is
                 when HLT =>
@@ -114,6 +116,7 @@ architecture behavior of cpu is
                     SP <= std_logic_vector(unsigned(SP) + 1);
                     mem_data_write <= '1';
                     mem_data_addr <= SP;
+                    report integer'image(to_integer(unsigned(instruction_in(data_width/2 - 1 downto 0))));
                     mem_data_in <= std_logic_vector(to_unsigned(to_integer(unsigned(instruction_in(data_width/2 - 1 downto 0))), (data_width*2)));
                     wait for 1 ns;
                     mem_data_write <= '0';
@@ -140,11 +143,14 @@ architecture behavior of cpu is
                     mem_data_read <= '1';
                     mem_data_addr <= SP;
                     wait for 1 ns;
-                    data_operator := mem_data_out(data_width*4-1 downto data_width*4-8);
+                    data_operator := mem_data_out(data_width*4-1 downto data_width*4-16);
+                    report integer'image(to_integer(signed(data_operator)));
                     SP <= std_logic_vector(unsigned(SP) - 1);
                     mem_data_addr <= SP;
                     wait for 1 ns;
-                    mem_data_in <= std_logic_vector(signed(mem_data_out(data_width*4-1 downto data_width*4-8)) + signed(data_operator));
+                    
+                    mem_data_in <= std_logic_vector(signed(mem_data_out(data_width*4-1 downto data_width*4-16)) + signed(data_operator));
+                    report integer'image(to_integer(signed(mem_data_out(data_width*4-1 downto data_width*4-16))));
                     mem_data_write <= '1';
                     mem_data_read <= '0';
                     wait for 1 ns;
@@ -244,8 +250,10 @@ architecture behavior of cpu is
                     SP <= std_logic_vector(unsigned(SP) - 1);
                     mem_data_read <= '0';
                 when others => 
-                    report "oi";
+                    report "Opcode Desconhecido";
             end case;
         end if;
+        instruction_addr <= IP;
+    wait until falling_edge(clock);
     end process;
 end architecture;
