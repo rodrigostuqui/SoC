@@ -58,18 +58,20 @@ architecture behavior of cpu is
     signal op : std_logic_vector(3 downto 0) := "0000";
     signal IP :std_logic_vector(addr_width-1 downto 0) := (others => '0');
     signal SP :std_logic_vector(addr_width-1 downto 0) := (others => '0');
+    signal data_operator : std_logic_vector((data_width*2)-1 downto 0);
+
     begin
     
     furia: process
-        variable data_operator : std_logic_vector((data_width*2)-1 downto 0);
 
         begin
-        IP <= std_logic_vector(unsigned(IP) + 1);
-        wait for 5 ns;
-        if falling_edge(clock) and halt = '0' then
+        if halt = '0' then
+            instruction_addr <= IP;
+            wait for 5 ns;
             op <= instruction_in(7 downto 4);
-            report integer'image(to_integer(unsigned(op)));
-            wait for 1 ns;
+            IP <= std_logic_vector(unsigned(IP) + 1);
+            wait for 5 ns;
+            report "Opcode: " & integer'image(to_integer(unsigned(op)));
             case op is
                 when HLT =>
                     wait until falling_edge(halt);
@@ -78,182 +80,228 @@ architecture behavior of cpu is
                 when IN_O =>
                     codec_read <= '1';
                     codec_write <= '0';
+                    wait for 5 ns;
                     codec_interrupt <= '0';
-                    wait for 1 ns;
+                    wait for 5 ns;
                     codec_interrupt <= '1';
                     wait until codec_valid'event;
                     SP <= std_logic_vector(unsigned(SP) + 1);
+                    wait for 5 ns;
                     mem_data_addr <= SP;
                     mem_data_write <= '1';
+                    wait for 5 ns;
                     mem_data_in <= std_logic_vector(to_unsigned(to_integer(unsigned(codec_data_out)), (data_width*2)));
+                    wait for 5 ns;
                     mem_data_write <= '0';
                 when OUT_O =>
+                    wait for 5 ns;
                     mem_data_addr <= SP;
                     mem_data_read <= '1';
-                    wait for 1 ns;
+                    wait for 5 ns;
                     mem_data_read <= '0';
+                    wait for 5 ns;
                     SP <= std_logic_vector(unsigned(SP) - 1);
                     codec_read <= '0';
+                    wait for 5 ns;
                     codec_write <= '1';
+                    wait for 5 ns;
                     codec_data_in <= mem_data_out(data_width*4 - 1 downto data_width*4 - 8);
+                    wait for 5 ns;
                     codec_interrupt <= '0';
-                    wait for 1 ns;
+                    wait for 5 ns;
                     codec_interrupt <= '1';
                     wait until codec_valid'event;
                 when PUSH_IP =>
                     SP <= std_logic_vector(unsigned(SP) + 1);
                     mem_data_write <= '1';
+                    wait for 5 ns;
                     mem_data_addr <= SP;
+                    wait for 5 ns;
                     mem_data_in <= std_logic_vector(to_unsigned(to_integer(unsigned(IP(addr_width-1 downto addr_width/2))), (data_width*2)));
-                    wait for 1 ns;
+                    wait for 5 ns;
                     SP <= std_logic_vector(unsigned(SP) + 1);
                     mem_data_addr <= SP;
+                    wait for 5 ns;
                     mem_data_in <= std_logic_vector(to_unsigned(to_integer(unsigned(IP(addr_width/2 - 1 downto 0))), (data_width*2)));
-                    wait for 1 ns;
+                    wait for 5 ns;
                     mem_data_write <= '0';
                 
                 when PUSH_IMM =>
                     SP <= std_logic_vector(unsigned(SP) + 1);
-                    mem_data_write <= '1';
+                    wait for 5 ns;
                     mem_data_addr <= SP;
-                    report integer'image(to_integer(unsigned(instruction_in(data_width/2 - 1 downto 0))));
-                    mem_data_in <= std_logic_vector(to_unsigned(to_integer(unsigned(instruction_in(data_width/2 - 1 downto 0))), (data_width*2)));
-                    wait for 1 ns;
+                    wait for 5 ns;
+                    report "SP: " & integer'image(to_integer(unsigned(SP)));
+                    mem_data_write <= '1';
+                    wait for 5 ns;
+                    report "Push_IMM Numero: " & integer'image(to_integer(signed(instruction_in(data_width/2 - 1 downto 0))));
+                    mem_data_in <= std_logic_vector(to_signed(to_integer(signed(instruction_in(data_width/2 - 1 downto 0))), (data_width*2)));
+                    wait for 5 ns;
                     mem_data_write <= '0';
+                    wait for 5 ns;
+
 
                 when DROP =>
                     mem_data_write <= '1';
                     mem_data_addr <= SP;
+                    wait for 5 ns;
                     mem_data_in <= std_logic_vector(to_unsigned(0, (data_width*2)));
-                    wait for 1 ns;
+                    report "Posição dropada: " & integer'image(to_integer(unsigned(SP)));
+                    wait for 5 ns;
                     SP <= std_logic_vector(unsigned(SP) - 1);
                     mem_data_write <= '0';
                 when DUP =>
+                    wait for 5 ns;
                     mem_data_read <= '1';
                     mem_data_addr <= SP;
-                    wait for 1 ns;
-                    SP <= std_logic_vector(unsigned(SP) + 1);
+                    wait for 5 ns;
                     mem_data_write <= '1';
                     mem_data_read <= '0';
+                    wait for 5 ns;
                     mem_data_in <= std_logic_vector(to_unsigned(to_integer(unsigned(mem_data_out(data_width*4-1 downto data_width*4-8))), (data_width*2)));
-                    wait for 1 ns;
+                    wait for 5 ns;
                     mem_data_write <= '0';
 
                 when ADD => 
                     mem_data_read <= '1';
+                    wait for 5 ns;
                     mem_data_addr <= SP;
-                    wait for 1 ns;
-                    data_operator := mem_data_out(data_width*4-1 downto data_width*4-16);
-                    report integer'image(to_integer(signed(data_operator)));
+                    wait for 5 ns;
+                    report "SP: " & integer'image(to_integer(unsigned(SP)));
+                    data_operator <= mem_data_out(data_width*4-1 downto data_width*4-16);
+                    wait for 5 ns;
+
+                    report "Add(Op1): " & integer'image(to_integer(signed(data_operator)));
+                    wait for 5 ns;
                     SP <= std_logic_vector(unsigned(SP) - 1);
+                    wait for 5 ns;
                     mem_data_addr <= SP;
-                    wait for 1 ns;
+                    wait for 5 ns;
                     
                     mem_data_in <= std_logic_vector(signed(mem_data_out(data_width*4-1 downto data_width*4-16)) + signed(data_operator));
-                    report integer'image(to_integer(signed(mem_data_out(data_width*4-1 downto data_width*4-16))));
+                    report "Add(Op2): " & integer'image(to_integer(signed(mem_data_out(data_width*4-1 downto data_width*4-16))));
                     mem_data_write <= '1';
                     mem_data_read <= '0';
-                    wait for 1 ns;
+                    wait for 5 ns;
                     mem_data_write <= '0';
 
                 when SUB =>
                     mem_data_read <= '1';
+                    wait for 5 ns;
                     mem_data_addr <= SP;
-                    wait for 1 ns;
-                    data_operator := mem_data_out(data_width*4-1 downto data_width*4-8);
+                    wait for 5 ns;
+                    report "SP: " & integer'image(to_integer(signed(SP)));
+                    data_operator <= mem_data_out(data_width*4-1 downto data_width*4-16);
+                    wait for 5 ns;
+
+                    report "Sub(Op1): " & integer'image(to_integer(signed(data_operator)));
+                    wait for 5 ns;
                     SP <= std_logic_vector(unsigned(SP) - 1);
+                    wait for 5 ns;
                     mem_data_addr <= SP;
-                    wait for 1 ns;
-                    mem_data_in <= std_logic_vector(signed(data_operator) - signed(mem_data_out(data_width*4-1 downto data_width*4-8)));
+                    wait for 5 ns;
+                
+                    mem_data_in <= std_logic_vector(signed(mem_data_out(data_width*4-1 downto data_width*4-16)) - signed(data_operator));
+                    report "Sub(Op2): " & integer'image(to_integer(signed(mem_data_out(data_width*4-1 downto data_width*4-16))));
                     mem_data_write <= '1';
                     mem_data_read <= '0';
-                    wait for 1 ns;
+                    wait for 5 ns;
                     mem_data_write <= '0';
 
                 when NAND_O =>
-                    mem_data_read <= '1';
                     mem_data_addr <= SP;
-                    wait for 1 ns;
-                    data_operator := mem_data_out(data_width*4-1 downto data_width*4-8);
+                    mem_data_read <= '1';
+                    report "Nand(Op1): ";
+                    wait for 5 ns;
+                    data_operator <= mem_data_out(data_width*4-1 downto data_width*4-16);
+                    wait for 5 ns;
+                    report "Nand(Op1): " & integer'image(to_integer(signed(data_operator)));
                     SP <= std_logic_vector(unsigned(SP) - 1);
                     mem_data_addr <= SP;
-                    wait for 1 ns;
-                    mem_data_in <= data_operator nand mem_data_out(data_width*4-1 downto data_width*4-8);
+                    wait for 5 ns;
+                    mem_data_in <= data_operator nand mem_data_out(data_width*4-1 downto data_width*4-16);
+                    wait for 5 ns;
+                    report "Nand(Op2): " & integer'image(to_integer(signed(mem_data_out(data_width*4-1 downto data_width*4-16))));
                     mem_data_write <= '1';
                     mem_data_read <= '0';
-                    wait for 1 ns;
                     mem_data_write <= '0';
                 when SLT =>
                     mem_data_read <= '1';
                     mem_data_addr <= SP;
-                    wait for 1 ns;
-                    data_operator := mem_data_out(data_width*4-1 downto data_width*4-8);
+                    wait for 5 ns;
+                    data_operator <= mem_data_out(data_width*4-1 downto data_width*4-8);
+                    wait for 5 ns;
                     SP <= std_logic_vector(unsigned(SP) - 1);
+                    wait for 5 ns;
                     mem_data_addr <= SP;
-                    wait for 1 ns;
+                    wait for 5 ns;
                     if signed(data_operator) < signed(mem_data_out(data_width*4-1 downto data_width*4-8)) then
                         mem_data_in <= std_logic_vector(to_unsigned(1, (data_width*2)));
                     else
                         mem_data_in <= std_logic_vector(to_unsigned(0, (data_width*2)));
                     end if;
                     mem_data_write <= '1';
+                    wait for 5 ns;
                     mem_data_read <= '0';
-                    wait for 1 ns;
                     mem_data_write <= '0';
                 
                 when SHL =>
                     mem_data_read <= '1';
                     mem_data_addr <= SP;
-                    wait for 1 ns;
-                    data_operator := mem_data_out(data_width*4-1 downto data_width*4-8);
+                    wait for 5 ns;
+                    data_operator <= mem_data_out(data_width*4-1 downto data_width*4-8);
+                    wait for 5 ns;
                     SP <= std_logic_vector(unsigned(SP) - 1);
                     mem_data_addr <= SP;
-                    wait for 1 ns;
+                    wait for 5 ns;
                     mem_data_in <= std_logic_vector(shift_left(signed(data_operator), to_integer(signed(mem_data_out(data_width*4-1 downto data_width*4-8)))));
+                    wait for 5 ns;
                     mem_data_write <= '1';
                     mem_data_read <= '0';
-                    wait for 1 ns;
                     mem_data_write <= '0';
                 when SHR =>
                     mem_data_read <= '1';
                     mem_data_addr <= SP;
-                    wait for 1 ns;
-                    data_operator := mem_data_out(data_width*4-1 downto data_width*4-8);
+                    wait for 5 ns;
+                    data_operator <= mem_data_out(data_width*4-1 downto data_width*4-8);
+                    wait for 5 ns;
                     SP <= std_logic_vector(unsigned(SP) - 1);
                     mem_data_addr <= SP;
-                    wait for 1 ns;
-                    mem_data_in <= std_logic_vector(shift_right(signed(data_operator), to_integer(signed(mem_data_out(data_width*4-1 downto data_width*4-8))))) ;
+                    wait for 5 ns;
+                    mem_data_in <= std_logic_vector(shift_right(signed(data_operator), to_integer(signed(mem_data_out(data_width*4-1 downto data_width*4-8)))));
+                    wait for 5 ns;
                     mem_data_write <= '1';
                     mem_data_read <= '0';
-                    wait for 1 ns;
                     mem_data_write <= '0';
                 when JEQ =>
                     mem_data_read <= '1';
                     mem_data_addr <= SP;
-                    wait for 1 ns;
-                    data_operator := mem_data_out(data_width*4-1 downto data_width*4-8);
+                    wait for 5 ns;
+                    data_operator <= mem_data_out(data_width*4-1 downto data_width*4-8);
+                    wait for 5 ns;
                     SP <= std_logic_vector(unsigned(SP) - 1);
                     mem_data_addr <= SP;
-                    wait for 1 ns;
+                    wait for 5 ns;
                     if signed(data_operator) = signed(mem_data_out(data_width*4-1 downto data_width*4-8)) then
                         SP <= std_logic_vector(unsigned(SP) - 1);
-                        wait for 1 ns;
                         IP <= std_logic_vector(signed(IP) + signed(mem_data_out(data_width*4-1 downto data_width*4/2)));
+                        wait for 5 ns;
                     end if;
                     mem_data_read <= '0';
                 
                 when JMP =>
                     mem_data_read <= '1';
                     mem_data_addr <= SP;
-                    wait for 1 ns;
+                    wait for 5 ns;
+                    mem_data_read <= '0';
+                    wait for 5 ns;
                     IP <= mem_data_out(data_width*4-1 downto data_width*4/2);
                     SP <= std_logic_vector(unsigned(SP) - 1);
-                    mem_data_read <= '0';
+                    wait for 5 ns;
                 when others => 
                     report "Opcode Desconhecido";
             end case;
         end if;
-        instruction_addr <= IP;
-    wait until falling_edge(clock);
+    wait until rising_edge(clock);
     end process;
 end architecture;
